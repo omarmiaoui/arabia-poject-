@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الحب والصداقة في الشباب</title>
+    <!-- تحميل Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تحميل Chart.js CDN لرسم البياني -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        /* إضافة خط Inter مع احتياطي مناسب للعربية */
+        body {
+            font-family: 'Inter', Tahoma, Arial, "Helvetica Neue", sans-serif;
+            background-color: #f7fafc; /* لون خلفية فاتح جداً */
+            color: #1a202c;
+            min-height: 100vh;
+        }
+        .container-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        }
+        /* لتنسيق الجدول بشكل أفضل */
+        .comparison-table th, .comparison-table td {
+            padding: 1rem;
+            text-align: right;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .comparison-table th {
+            background-color: #edf2f7;
+            font-weight: 700;
+            color: #2c5282;
+        }
+        /* الانتقال السلس للإخفاء والإظهار */
+        .transition-opacity {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .page-content {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        .page-content.active {
+            display: block;
+            opacity: 1;
+        }
+        .nav-btn.active {
+            background-color: #1d4ed8;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        /* تنسيق خاص للإحصائيات */
+        .stats-card {
+            background-color: #fff;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 2px solid #3b82f6;
+            transition: all 0.5s ease-in-out; 
+            transform: scale(0.95);
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            will-change: transform, opacity, height; 
+        }
+        .stats-card.visible {
+            transform: scale(1);
+            opacity: 1;
+            height: auto;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem; /* Ensure padding is consistent when visible */
+        }
+
+        /* تنسيق مربع حوار LLM */
+        .llm-modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .llm-modal {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 1.5rem;
+            max-width: 90%;
+            width: 600px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .gemini-response p {
+            margin-bottom: 0.5rem;
+        }
+        .gemini-response ul {
+            list-style-type: disc;
+            margin-right: 1.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="p-0 md:p-0">
+
+    <script>
+        let chartDrawn = false; // متغير لتتبع حالة الرسم البياني
+        const apiKey = ""; // مفتاح API لنموذج Gemini - يُترك فارغًا ليتم توفيره تلقائيًا في بيئة Canvas
+
+        // ==============================================
+        //           دوال LLM
+        // ==============================================
+        
+        /**
+         * @function showLLMModal
+         * يعرض مربع حوار LLM بملء المحتوى الديناميكي داخله.
+         */
+        function showLLMModal(title, content, action, inputPlaceholder, buttonText) {
+            const modalContainer = document.getElementById('llm-modal-container');
+            // تأكد من أن الحاوية موجودة أولاً
+            if (!modalContainer) {
+                console.error("LLM Modal container not found.");
+                return;
+            }
+
+            // يتم بناء المحتوى الديناميكي وإضافته للحاوية
+            modalContainer.innerHTML = `
+                <div class="llm-modal-backdrop" onclick="closeLLMModal()">
+                    <div class="llm-modal" onclick="event.stopPropagation()">
+                        <div class="flex justify-between items-center border-b pb-3 mb-4">
+                            <h3 class="text-xl font-bold text-blue-700">${title}</h3>
+                            <button onclick="closeLLMModal()" class="text-gray-500 hover:text-gray-800 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <p class="text-gray-600 mb-4">${content}</p>
+                        <textarea id="llm-input" rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition resize-none" placeholder="${inputPlaceholder}"></textarea>
+                        <button 
+                            id="llm-action-button"
+                            onclick="${action}"
+                            class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl transition duration-300 ease-in-out transform hover:scale-[1.01] flex items-center justify-center"
+                        >
+                            <span id="llm-button-text">${buttonText}</span>
+                            <div id="llm-spinner" class="hidden animate-spin rounded-full h-5 w-5 border-b-2 border-white ml-2"></div>
+                        </button>
+                        
+                        <div id="llm-output-container" class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg hidden">
+                            <h4 class="font-semibold text-gray-700 mb-2 border-b pb-1">نتائج التحليل من Gemini:</h4>
+                            <div id="llm-output" class="gemini-response text-gray-800 leading-relaxed text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            modalContainer.classList.remove('hidden');
+        }
+
+        /**
+         * @function closeLLMModal
+         * يغلق مربع حوار LLM. تم إصلاح المشكلة هنا عبر التحقق من وجود الحاوية أولاً،
+         * ثم إفراغ محتواها بدلاً من محاولة الوصول إلى عناصر قد تكون غير موجودة.
+         */
+        function closeLLMModal() {
+            const modalContainer = document.getElementById('llm-modal-container');
+            if (modalContainer) {
+                modalContainer.classList.add('hidden');
+                // الإصلاح الحاسم: إفراغ المحتوى الذي تم إنشاؤه ديناميكيًا لتجنب أخطاء Null عند الاستدعاء المبكر
+                modalContainer.innerHTML = '';
+            }
+        }
+
+        // دالة تنفيذ طلب Gemini API مع خاصية التراجع الأسي (Exponential Backoff)
+        async function fetchGeminiContent(payload, retries = 3) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || 'لم يتم الحصول على إجابة واضحة.';
+                        return text;
+                    }
+
+                    // في حالة خطأ 429 (Too Many Requests) أو 500
+                    if (response.status === 429 || response.status >= 500) {
+                        if (i < retries - 1) {
+                            const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            continue; // المحاولة مجدداً
+                        }
+                    }
+                    
+                    // لأي خطأ آخر غير قابل للتراجع أو بعد آخر محاولة
+                    const errorBody = await response.json();
+                    throw new Error(`API Error: ${response.status} - ${errorBody.error?.message || response.statusText}`);
+
+                } catch (error) {
+                    console.error("Gemini API call failed:", error);
+                    if (i === retries - 1) throw new Error("فشل الاتصال بخدمة الذكاء الاصطناعي بعد عدة محاولات.");
+                }
+            }
+        }
+        
+        // ==============================================
+        //           وظائف الميزات الجديدة (Gemini Features)
+        // ==============================================
+
+        // 1. تحليل سؤال (LLM-Powered Q&A)
+        async function analyzeRelationshipQuestion() {
+            const inputElement = document.getElementById('llm-input');
+            const outputElement = document.getElementById('llm-output');
+            const outputContainer = document.getElementById('llm-output-container');
+            const button = document.getElementById('llm-action-button');
+            const buttonTextSpan = document.getElementById('llm-button-text');
+            const spinner = document.getElementById('llm-spinner');
+            
+            const userQuery = inputElement ? inputElement.value.trim() : '';
+
+            if (!userQuery) {
+                if (outputElement) outputElement.innerHTML = '<p class="text-red-500">الرجاء إدخال سؤالك أو السيناريو لتحليله.</p>';
+                if (outputContainer) outputContainer.classList.remove('hidden');
+                return;
+            }
+
+            // إعداد واجهة المستخدم للتحميل
+            if (buttonTextSpan) buttonTextSpan.textContent = 'جاري التحليل...';
+            if (spinner) spinner.classList.remove('hidden');
+            if (button) button.disabled = true;
+            if (outputContainer) outputContainer.classList.add('hidden');
+            if (outputElement) outputElement.innerHTML = '';
+
+
+            try {
+                const systemPrompt = "أنت مستشار علاقات اجتماعية وشخصية للشباب، مهمتك هي تحليل السيناريو أو السؤال المقدم وتقديم نصيحة متوازنة وعملية ومفصلة في شكل نقاط. ركز على التوازن بين الصداقة والحب، وأهمية التواصل. أجب باللغة العربية الفصحى.";
+                
+                const payload = {
+                    contents: [{ parts: [{ text: `السيناريو/السؤال: ${userQuery}` }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                };
+
+                const responseText = await fetchGeminiContent(payload);
+                
+                // تحويل المخرجات إلى HTML وعرضها
+                if (outputElement) outputElement.innerHTML = marked.parse(responseText);
+                if (outputContainer) outputContainer.classList.remove('hidden');
+
+            } catch (error) {
+                if (outputElement) outputElement.innerHTML = `<p class="text-red-500">حدث خطأ: ${error.message}</p>`;
+                if (outputContainer) outputContainer.classList.remove('hidden');
+            } finally {
+                // إعادة واجهة المستخدم إلى الحالة الأصلية
+                if (buttonTextSpan) buttonTextSpan.textContent = '✨ تحليل السؤال';
+                if (spinner) spinner.classList.add('hidden');
+                if (button) button.disabled = false;
+            }
+        }
+
+        // 2. صياغة هدف (LLM-Powered Goal Drafting)
+        async function draftPersonalGoal() {
+            const inputElement = document.getElementById('llm-input');
+            const outputElement = document.getElementById('llm-output');
+            const outputContainer = document.getElementById('llm-output-container');
+            const button = document.getElementById('llm-action-button');
+            const buttonTextSpan = document.getElementById('llm-button-text');
+            const spinner = document.getElementById('llm-spinner');
+            
+            const userGoalIdea = inputElement ? inputElement.value.trim() : '';
+
+            if (!userGoalIdea) {
+                if (outputElement) outputElement.innerHTML = '<p class="text-red-500">الرجاء إدخال فكرة هدفك.</p>';
+                if (outputContainer) outputContainer.classList.remove('hidden');
+                return;
+            }
+
+            // إعداد واجهة المستخدم للتحميل
+            if (buttonTextSpan) buttonTextSpan.textContent = 'جاري الصياغة...';
+            if (spinner) spinner.classList.remove('hidden');
+            if (button) button.disabled = true;
+            if (outputContainer) outputContainer.classList.add('hidden');
+            if (outputElement) outputElement.innerHTML = '';
+
+
+            try {
+                const systemPrompt = "أنت مدرب حياة متخصص في مساعدة الشباب على تحقيق أهدافهم. مهمتك هي تحويل فكرة الهدف المقدمة من المستخدم إلى هدف واضح ومحدد وقابل للقياس (SMART Goal). قم بصياغة الهدف النهائي ثم قدم 3 خطوات عملية لتحقيقه.";
+                
+                const payload = {
+                    contents: [{ parts: [{ text: `فكرة الهدف: ${userGoalIdea}` }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                };
+
+                const responseText = await fetchGeminiContent(payload);
+                
+                // تحويل المخرجات إلى HTML وعرضها
+                if (outputElement) outputElement.innerHTML = marked.parse(responseText);
+                if (outputContainer) outputContainer.classList.remove('hidden');
+
+            } catch (error) {
+                if (outputElement) outputElement.innerHTML = `<p class="text-red-500">حدث خطأ: ${error.message}</p>`;
+                if (outputContainer) outputContainer.classList.remove('hidden');
+            } finally {
+                // إعادة واجهة المستخدم إلى الحالة الأصلية
+                if (buttonTextSpan) buttonTextSpan.textContent = '✨ صياغة الهدف';
+                if (spinner) spinner.classList.add('hidden');
+                if (button) button.disabled = false;
+            }
+        }
+
+
+        // ==============================================
+        //           دوال مساعدة (UI)
+        // ==============================================
+        
+        // دالة لرسم المخطط البياني (Chart.js)
+        function drawChart() {
+            if (chartDrawn) return;
+
+            const ctx = document.getElementById('successChart');
+
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['النجاح المهني', 'الصحة النفسية', 'النمو المادي'],
+                        datasets: [{
+                            label: 'نسبة الدعم والنمو (%)',
+                            data: [75, 40, 30],
+                            backgroundColor: [
+                                'rgba(59, 130, 246, 0.8)', 
+                                'rgba(236, 72, 153, 0.8)', 
+                                'rgba(79, 70, 229, 0.8)'  
+                            ],
+                            borderColor: [
+                                'rgba(59, 130, 246, 1)',
+                                'rgba(236, 72, 153, 1)',
+                                'rgba(79, 70, 229, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    font: { family: 'Inter, Tahoma, Arial, "Helvetica Neue", sans-serif', size: 14 }
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'مؤشرات تأثير العلاقات على النجاح الكلي',
+                                font: { family: 'Inter, Tahoma, Arial, "Helvetica Neue", sans-serif', size: 16, weight: 'bold' }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, max: 100, title: { display: true, text: 'النسبة المئوية (%)' } },
+                            x: { title: { display: true, text: 'مجال التأثير' } }
+                        }
+                    }
+                });
+                chartDrawn = true;
+            }
+        }
+        
+        /**
+         * @function showPage
+         * دالة لإظهار الصفحة المطلوبة وإخفاء باقي الصفحات
+         * @param {string} pageId - معرّف الصفحة.
+         */
+        function showPage(pageId) {
+            const pages = document.querySelectorAll('.page-content');
+            pages.forEach(page => {
+                if (page.id === pageId) {
+                    page.classList.add('active');
+                } else {
+                    page.classList.remove('active');
+                }
+            });
+
+            const navButtons = document.querySelectorAll('.nav-btn');
+            navButtons.forEach(btn => {
+                if (btn.getAttribute('onclick').includes(pageId)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            closeLLMModal(); // يجب إغلاق المودال أولاً - تم إصلاح هذه الدالة
+
+            const statsCard = document.getElementById('static-stats');
+            if (statsCard) {
+                statsCard.classList.remove('visible');
+            }
+            
+            const mainNav = document.getElementById('main-nav');
+            if (pageId !== 'presentation-page') {
+                mainNav.classList.remove('hidden');
+                mainNav.classList.add('flex');
+            } else {
+                mainNav.classList.add('hidden');
+                mainNav.classList.remove('flex');
+            }
+        }
+
+        // دالة إظهار وإخفاء الإحصائيات
+        function toggleStats() {
+            const statsCard = document.getElementById('static-stats');
+            const statsButton = document.getElementById('stats-button');
+            
+            if (!statsCard || !statsButton) return;
+
+            if (statsCard.classList.contains('visible')) {
+                statsCard.classList.remove('visible');
+                statsButton.textContent = 'شاهد إحصائيات النجاح';
+            } else {
+                statsCard.classList.add('visible');
+                statsButton.textContent = 'إخفاء الإحصائيات';
+                
+                if (!chartDrawn) {
+                    setTimeout(drawChart, 100); 
+                }
+            }
+        }
+
+        // لتحويل markdown إلى HTML بسيط
+        const marked = {
+            parse: function(markdown) {
+                // تحويل العناوين (Headers) إلى نص غامق
+                let html = markdown.replace(/### (.*)/g, '<h4><strong>$1</strong></h4>');
+                html = html.replace(/## (.*)/g, '<h3><strong>$1</strong></h3>');
+                html = html.replace(/# (.*)/g, '<h2><strong>$1</strong></h2>');
+
+                // تحويل القوائم إلى قائمة غير مرتبة (ul)
+                html = html.replace(/^\* (.*)/gm, '<li>$1</li>');
+                html = html.replace(/(\n<li>.*<\/li>)+/gs, '<ul>$&</ul>');
+                
+                // تحويل النص الغامق
+                html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                // تحويل الفقرات
+                html = html.split('\n\n').map(p => {
+                    if (p.trim().startsWith('<') || p.trim() === '') return p;
+                    return `<p>${p.trim()}</p>`;
+                }).join('');
+
+                return html;
+            }
+        };
+
+
+        // إظهار صفحة التقديم عند تحميل الصفحة لأول مرة
+        document.addEventListener('DOMContentLoaded', () => {
+            showPage('presentation-page');
+        });
+    </script>
+
+    <!-- حاوية المودال (مخفية بشكل افتراضي) - هذا العنصر موجود دائمًا -->
+    <div id="llm-modal-container" class="hidden"></div>
+
+
+    <!-- ============================================== -->
+    <!--          واجهة التقديم (Landing Page)          -->
+    <!-- ============================================== -->
+    <div id="presentation-page" class="page-content active flex items-center justify-center min-h-screen bg-blue-50 p-4">
+        <div class="max-w-xl mx-auto p-8 text-center bg-white rounded-3xl container-shadow">
+            <h1 class="text-5xl font-extrabold text-blue-800 mb-4 animate-pulse">رحلة في عالم الشباب</h1>
+            <p class="text-xl text-gray-700 mb-4 leading-relaxed">
+                اكتشف كيف تتشابك خيوط **الحب والصداقة** لتشكل الأساس العاطفي والاجتماعي في أهم مراحل بناء الهوية. تحليل معمق لأهمية الصداقة كقاعدة، وظهور الحب كتجربة مكثفة.
+            </p>
+            <!-- إضافة أسماء المقدمين هنا -->
+            <p class="text-sm text-gray-500 mb-8">
+                بتقديم من: عمر الميعاوي | عصام مي | محمد عزري | إسلام | **مريم عشوي** | **معهد نهج العطارين**
+            </p>
+            <!-- نهاية إضافة أسماء المقدمين -->
+            <button 
+                onclick="showPage('analysis-page')"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+            >
+                ابدأ التحليل الآن
+            </button>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!--          شريط التنقل (لكل الصفحات الرئيسية)        -->
+    <!-- ============================================== -->
+    <div id="main-nav" class="hidden justify-center bg-white p-4 shadow-md sticky top-0 z-10">
+        <button onclick="showPage('analysis-page')" class="nav-btn py-2 px-6 mx-2 text-gray-600 rounded-full hover:bg-gray-100 transition">تحليل الحب والصداقة</button>
+        <button onclick="showPage('success-page')" class="nav-btn py-2 px-6 mx-2 text-gray-600 rounded-full hover:bg-gray-100 transition">العلاقات ودفع النجاح</button>
+    </div>
+
+    <!-- ============================================== -->
+    <!--          واجهة المحتوى الأساسي (Analysis Page)      -->
+    <!-- ============================================== -->
+    <div id="analysis-page" class="page-content pt-4 pb-8">
+        <div class="max-w-4xl mx-auto bg-white rounded-3xl container-shadow overflow-hidden">
+            
+            <!-- القسم الرئيسي والعنوان -->
+            <header class="bg-blue-600 text-white p-6 md:p-10 rounded-t-3xl text-center">
+                <h1 class="text-3xl md:text-4xl font-extrabold mb-2">العلاقة المتشابكة: الحب والصداقة في الشباب</h1>
+                <p class="text-lg opacity-90">تحليل محوري للتطور العاطفي والاجتماعي في هذه المرحلة العمرية</p>
+            </header>
+
+            <!-- زر ميزة Gemini (تحليل العلاقات) -->
+            <div class="p-6 md:p-10 bg-blue-100 text-center">
+                <button 
+                    onclick="showLLMModal('✨ تحليل سؤال عن العلاقات', 'اكتب سؤالك أو سيناريو حول تحديات العلاقة (صداقة أو حب) للحصول على تحليل ونصيحة متوازنة من خبير العلاقات لدينا.', 'analyzeRelationshipQuestion()', 'مثال: كيف أوازن بين قضاء الوقت مع شريكي وأصدقائي المقربين دون أن يشعر أحدهم بالإهمال؟', '✨ تحليل السؤال')"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center mx-auto"
+                >
+                    ✨ تحليل سؤال عن العلاقات (Gemini)
+                </button>
+            </div>
+
+            <main class="p-6 md:p-10 space-y-12">
+
+                <!-- المقدمة -->
+                <section>
+                    <p class="text-lg leading-relaxed text-gray-700">
+                        العلاقة بين <span class="font-bold text-blue-800">الشباب</span> في مجال الحب والصداقة هي علاقة متداخلة ومحورية في هذه المرحلة العمرية، حيث تعتبر كل منهما أساساً لتطورهم العاطفي والاجتماعي.
+                    </p>
+                </section>
+
+                <!-- 1. أهمية الصداقة (الصداقة كقاعدة) -->
+                <section class="p-6 bg-green-50 rounded-xl border border-green-200">
+                    <h2 class="text-2xl font-bold text-green-700 mb-4">1. أهمية الصداقة (الصداقة كقاعدة)</h2>
+                    <p class="text-gray-600 mb-5">تُعد الصداقة في مرحلة الشباب بمثابة الركيزة الأساسية التي يتعلم فيها الشاب كيفية بناء العلاقات الحميمة خارج نطاق الأسرة.</p>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <span class="text-xl text-green-600 ml-3 mt-1">&#10003;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">تطوير المهارات الاجتماعية:</span> يتعلم الشباب من خلال الصداقة مهارات أساسية مثل **التعاطف، حل النزاعات، التعبير عن المشاعر، وتقديم الدعم**. هذه المهارات ضرورية لأي علاقة مستقبلية.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-xl text-green-600 ml-3 mt-1">&#10003;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">بناء الهوية:</span> تُعد الصداقة مرآة للشاب، حيث تساعده في استكشاف هويته وقيمه واهتماماته الخاصة من خلال التفاعل والمقارنة مع الأقران.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-xl text-green-600 ml-3 mt-1">&#10003;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">الدعم العاطفي:</span> يوفر الأصدقاء المقربون مصدراً رئيسياً للثقة والدعم العاطفي، ويصبحون هم الأشخاص الذين يلجأ إليهم الشاب لمناقشة أعمق مشاكله وشؤونه الشخصية.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. ظهور الحب (العلاقات الرومانسية) -->
+                <section class="p-6 bg-red-50 rounded-xl border border-red-200">
+                    <h2 class="text-2xl font-bold text-red-700 mb-4">2. ظهور الحب (العلاقات الرومانسية)</h2>
+                    <p class="text-gray-600 mb-5">العلاقات العاطفية (الحب الرومانسي) تبدأ بالظهور في مرحلة الشباب، وتأتي مع تحديات ومشاعر جديدة:</p>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <span class="text-xl text-red-600 ml-3 mt-1">&#x2764;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">الكثافة العاطفية:</span> يتسم الحب في سن الشباب بكونه تجربة عاطفية شديدة ومكثفة، وقد تتراوح المشاعر فيها بين السعادة الغامرة والقلق والغيرة.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-xl text-red-600 ml-3 mt-1">&#x2764;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">الشغف والتفرد:</span> يختلف الحب عن الصداقة بوجود عنصر الشغف والرغبة في التفرد بالشريك، مما يجعل العلاقة أكثر تركيزاً وأقل اتساعاً من شبكة الأصدقاء.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-xl text-red-600 ml-3 mt-1">&#x2764;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">اكتشاف الذات في العلاقة:</span> يُنظر إلى هذه العلاقات كشكل من أشكال تطوير الذات، حيث يتعلم الشاب كيفية التفاوض على الحدود الشخصية، إدارة مشاعر التعلق، وموازنة وقته بين الشريك والأصدقاء.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. العلاقة المتشابكة بينهما (الجدول) -->
+                <section>
+                    <h2 class="text-2xl font-bold text-blue-800 mb-5 border-b-2 pb-2 border-blue-200">3. العلاقة المتشابكة بينهما</h2>
+
+                    <div class="overflow-x-auto rounded-lg border border-gray-200">
+                        <table class="w-full text-sm comparison-table">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="w-1/4">الجانب</th>
+                                    <th class="w-1/4">التداخل والاتصال</th>
+                                    <th class="w-1/2">نقطة التوتر والاختلاف</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr>
+                                    <td class="font-semibold text-gray-800">الأساس</td>
+                                    <td>**تتحول العديد من علاقات الصداقة إلى علاقات حب**، حيث يوفر الأساس القوي من الثقة والتفاهم نقطة انطلاق صحية للارتباط الرومانسي.</td>
+                                    <td>يضيف الحب عنصر **الغيرة والتملك** والالتزام الحصري، مما قد يغيب في الصداقة.</td>
+                                </tr>
+                                <tr>
+                                    <td class="font-semibold text-gray-800">الاستقرار</td>
+                                    <td>الصداقات عادة ما تكون أكثر **استقراراً ودواماً** خلال التقلبات العاطفية للشباب.</td>
+                                    <td>يمكن للعلاقات العاطفية أن تستهلك وقت وطاقة **الشاب**، مما قد يؤدي إلى إهمال الصداقات القديمة وتضييق الدائرة الاجتماعية.</td>
+                                </tr>
+                                <tr>
+                                    <td class="font-semibold text-gray-800">التأثير المتبادل</td>
+                                    <td>جودة الصداقات المبكرة تتنبأ بقدرة الشاب على بناء **علاقة حب صحية** قائمة على الثقة والود.</td>
+                                    <td>انفصال العلاقة العاطفية يكون عادة أكثر إيلاماً **وتأثيراً** على الصحة النفسية من الخلافات مع الأصدقاء.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+
+            <!-- التذييل -->
+            <footer class="p-6 md:p-8 bg-gray-100 text-center text-gray-600 rounded-b-3xl">
+                <p class="text-sm">هذا المحتوى هو تحليل مبني على الدراسات النفسية والاجتماعية لمرحلة الشباب.</p>
+            </footer>
+        </div>
+    </div>
+
+
+    <!-- ============================================== -->
+    <!--          واجهة العلاقات ودفع النجاح (Success Page)      -->
+    <!-- ============================================== -->
+    <div id="success-page" class="page-content pt-4 pb-8">
+        <div class="max-w-4xl mx-auto bg-white rounded-3xl container-shadow overflow-hidden">
+            
+            <header class="bg-indigo-600 text-white p-6 md:p-10 rounded-t-3xl text-center">
+                <h1 class="text-3xl md:text-4xl font-extrabold mb-2">العلاقات كمحرك للنجاح</h1>
+                <p class="text-lg opacity-90">كيف تدعم الصداقة والحب مسيرة الشاب نحو الإنجاز الشخصي والمهني.</p>
+            </header>
+
+            <!-- زر ميزة Gemini (صياغة هدف شخصي/مهني) -->
+            <div class="p-6 md:p-10 bg-indigo-100 text-center">
+                <button 
+                    onclick="showLLMModal('✨ صياغة هدف شخصي/مهني', 'اكتب فكرة هدفك الحالي (مثال: أريد أن أكون مستقلاً مادياً، أو أريد أن أجد وظيفة أحبها) وسنساعدك في تحويله إلى هدف محدد وفعّال (SMART Goal).', 'draftPersonalGoal()', 'مثال: أريد أن أطور مهاراتي في البرمجة وأجد وظيفة مناسبة بعد عام من الآن.', '✨ صياغة الهدف')"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center mx-auto"
+                >
+                    ✨ صياغة هدف شخصي/مهني (Gemini)
+                </button>
+            </div>
+
+            <main class="p-6 md:p-10 space-y-12">
+                
+                <!-- نجاح الصداقة -->
+                <section class="p-6 bg-yellow-50 rounded-xl border border-yellow-200">
+                    <h2 class="text-2xl font-bold text-yellow-700 mb-4 flex items-center">
+                        <span class="text-3xl ml-3">&#9733;</span> الصداقة وزيادة النجاح المهني
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <span class="text-xl text-yellow-600 ml-3 mt-1">&#x2713;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">شبكة الدعم والفرص:</span> الأصدقاء يوسعون الشبكة الاجتماعية والمهنية، وغالباً ما يكونون مصدراً للإحالات، والوظائف، والشراكات الجديدة.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-xl text-yellow-600 ml-3 mt-1">&#x2713;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">التغذية الراجعة البنّاءة:</span> الصديق الموثوق به يقدم نقداً صادقاً ويساعد الشاب على تقييم أفكاره وقراراته قبل اتخاذ خطوات مهمة، مما يقلل من احتمالية الفشل.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-xl text-yellow-600 ml-3 mt-1">&#x2713;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">تحسين المزاج والإنتاجية:</span> الدعم الاجتماعي يقلل من التوتر والقلق، مما يسمح للشاب بالتركيز بشكل أفضل على أهدافه وتحقيق مستويات أعلى من الإنتاجية.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- نجاح الحب -->
+                <section class="p-6 bg-pink-50 rounded-xl border border-pink-200">
+                    <h2 class="text-2xl font-bold text-pink-700 mb-4 flex items-center">
+                        <span class="text-3xl ml-3">&#10084;</span> الحب وزيادة النجاح الشخصي
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <span class="text-xl text-pink-600 ml-3 mt-1">&#x2713;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">الشريك كمرساة عاطفية:</span> العلاقات العاطفية المستقرة توفر إحساساً بالأمان والهدف، مما يعزز الثقة بالنفس ويقلل من الشعور بالوحدة، وهما عاملان أساسيان للنجاح الشخصي.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-xl text-pink-600 ml-3 mt-1">&#x2713;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">التحفيز المشترك:</span> الشريك الداعم يشجع على تحقيق الأهداف المشتركة والشخصية، ويحفز على تبني نمط حياة صحي ومتوازن يعكس إيجاباً على الأداء العام.</p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-xl text-pink-600 ml-3 mt-1">&#x2713;</span>
+                            <p class="flex-1 text-gray-700"><span class="font-semibold">إدارة الأزمات:</span> في أوقات الشدة والفشل، يصبح الشريك الرومانسي مصدراً أولياً للتعافي والدعم غير المشروط، مما يمكّن الشاب من تجاوز العقبات بسرعة والمضي قدماً.</p>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- زر الإحصائيات -->
+                <div class="text-center pt-8">
+                    <button 
+                        id="stats-button"
+                        onclick="toggleStats()"
+                        class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-xl"
+                    >
+                        شاهد إحصائيات النجاح
+                    </button>
+                </div>
+
+                <!-- قسم الإحصائيات (المخفي) -->
+                <div id="static-stats" class="stats-card transition duration-500">
+                    <h3 class="text-2xl font-extrabold text-blue-700 mb-6 text-center border-b pb-2">إحصائيات حول العلاقات والنجاح</h3>
+                    
+                    <!-- إضافة الرسم البياني هنا -->
+                    <div class="mb-8" style="height: 350px;">
+                        <canvas id="successChart"></canvas>
+                    </div>
+
+                    <!-- قائمة البيانات المفصلة -->
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                            <p class="font-semibold text-gray-800">النجاح المهني (الصداقة):</p>
+                            <span class="text-2xl font-mono text-green-600">75%</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mr-4">من الشباب يعزون علاقاتهم القوية بأصدقائهم في توفير أول فرصة عمل جادة لهم.</p>
+                        
+                        <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                            <p class="font-semibold text-gray-800">الصحة النفسية (الحب):</p>
+                            <span class="text-2xl font-mono text-red-600">40%</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mr-4">انخفاض في معدل الإجهاد (Burnout) لدى الشباب الذين يتمتعون بعلاقة عاطفية مستقرة وداعمة.</p>
+                        
+                        <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                            <p class="font-semibold text-gray-800">النمو المادي:</p>
+                            <span class="text-2xl font-mono text-indigo-600">30%</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mr-4">معدل نمو أعلى في الرواتب خلال 5 سنوات للشباب ذوي شبكات الدعم الاجتماعي القوية (الأصدقاء والشريك).</p>
+                    </div>
+                </div>
+
+            </main>
+
+            <!-- التذييل -->
+            <footer class="p-6 md:p-8 bg-gray-100 text-center text-gray-600 rounded-b-3xl">
+                <p class="text-sm">العلاقات الصحية هي استثمار في المستقبل المهني والعاطفي.</p>
+            </footer>
+        </div>
+    </div>
+</body>
+</html>
