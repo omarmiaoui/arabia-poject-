@@ -103,7 +103,7 @@
         }
     </style>
 </head>
-<body class="p-0 md:p-0">
+<body class="p-2 md:p-4">
 
     <script>
         let chartDrawn = false; // متغير لتتبع حالة الرسم البياني
@@ -174,6 +174,7 @@
 
         // دالة تنفيذ طلب Gemini API مع خاصية التراجع الأسي (Exponential Backoff)
         async function fetchGeminiContent(payload, retries = 3) {
+            // يتم استخدام gemini-2.5-flash-preview-05-20 لأنه نموذج سريع
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
             
             for (let i = 0; i < retries; i++) {
@@ -390,7 +391,9 @@
 
             const navButtons = document.querySelectorAll('.nav-btn');
             navButtons.forEach(btn => {
-                if (btn.getAttribute('onclick').includes(pageId)) {
+                // تحديث الزر النشط بناءً على الـ onclick
+                const btnPageId = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+                if (btnPageId === pageId) {
                     btn.classList.add('active');
                 } else {
                     btn.classList.remove('active');
@@ -407,10 +410,11 @@
             const mainNav = document.getElementById('main-nav');
             if (pageId !== 'presentation-page') {
                 mainNav.classList.remove('hidden');
-                mainNav.classList.add('flex');
+                // نستخدم flex-col لتناسب الهواتف
+                mainNav.classList.add('flex', 'flex-col', 'sm:flex-row'); 
             } else {
                 mainNav.classList.add('hidden');
-                mainNav.classList.remove('flex');
+                mainNav.classList.remove('flex', 'flex-col', 'sm:flex-row');
             }
         }
 
@@ -496,15 +500,17 @@
     <!-- ============================================== -->
     <!--          شريط التنقل (لكل الصفحات الرئيسية)        -->
     <!-- ============================================== -->
-    <div id="main-nav" class="hidden justify-center bg-white p-4 shadow-md sticky top-0 z-10">
-        <button onclick="showPage('analysis-page')" class="nav-btn py-2 px-6 mx-2 text-gray-600 rounded-full hover:bg-gray-100 transition">تحليل الحب والصداقة</button>
-        <button onclick="showPage('success-page')" class="nav-btn py-2 px-6 mx-2 text-gray-600 rounded-full hover:bg-gray-100 transition">العلاقات ودفع النجاح</button>
+    <!-- تم التحديث: استخدام flex-col على الهاتف (افتراضي) و sm:flex-row للأجهزة الأكبر، مع مسافات (space-y/space-x) ملائمة -->
+    <div id="main-nav" class="hidden flex-col sm:flex-row justify-center bg-white p-4 shadow-md sticky top-0 z-10 space-y-2 sm:space-y-0 sm:space-x-4">
+        <button onclick="showPage('analysis-page')" class="nav-btn py-2 px-4 text-gray-600 rounded-full hover:bg-gray-100 transition w-full sm:w-auto">تحليل الحب والصداقة</button>
+        <button onclick="showPage('success-page')" class="nav-btn py-2 px-4 text-gray-600 rounded-full hover:bg-gray-100 transition w-full sm:w-auto">العلاقات ودفع النجاح</button>
     </div>
 
     <!-- ============================================== -->
     <!--          واجهة المحتوى الأساسي (Analysis Page)      -->
     <!-- ============================================== -->
     <div id="analysis-page" class="page-content pt-4 pb-8">
+        <!-- تم الحفاظ على max-w-4xl mx-auto لضمان عدم تمدد المحتوى بشكل مفرط على الشاشات الكبيرة -->
         <div class="max-w-4xl mx-auto bg-white rounded-3xl container-shadow overflow-hidden">
             
             <!-- القسم الرئيسي والعنوان -->
@@ -578,13 +584,14 @@
                 <section>
                     <h2 class="text-2xl font-bold text-blue-800 mb-5 border-b-2 pb-2 border-blue-200">3. العلاقة المتشابكة بينهما</h2>
 
+                    <!-- تم الحفاظ على overflow-x-auto لضمان التمرير الأفقي في حال ضاق المحتوى جداً -->
                     <div class="overflow-x-auto rounded-lg border border-gray-200">
                         <table class="w-full text-sm comparison-table">
                             <thead class="bg-gray-100">
                                 <tr>
-                                    <th class="w-1/4">الجانب</th>
-                                    <th class="w-1/4">التداخل والاتصال</th>
-                                    <th class="w-1/2">نقطة التوتر والاختلاف</th>
+                                    <th class="w-1/4 min-w-[80px]">الجانب</th>
+                                    <th class="w-1/4 min-w-[150px]">التداخل والاتصال</th>
+                                    <th class="w-1/2 min-w-[200px]">نقطة التوتر والاختلاف</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
