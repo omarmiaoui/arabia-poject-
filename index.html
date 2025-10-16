@@ -3,16 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الحب والصداقة في الشباب</title>
+    <title>الحب والصداقة في الشباب - رحلة في عالم العلاقات</title>
     <!-- تحميل Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- تحميل Chart.js CDN لرسم البياني -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- تحميل AOS للحركات -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <!-- تحميل Font Awesome للرموز -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* إضافة خط Inter مع احتياطي مناسب للعربية */
         body {
             font-family: 'Inter', Tahoma, Arial, "Helvetica Neue", sans-serif;
-            background-color: #f7fafc; /* لون خلفية فاتح جداً */
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
             color: #1a202c;
             min-height: 100vh;
         }
@@ -67,7 +72,7 @@
             opacity: 1;
             height: auto;
             margin-top: 1.5rem;
-            padding-top: 1.5rem; /* Ensure padding is consistent when visible */
+            padding-top: 1.5rem;
         }
 
         /* تنسيق مربع حوار LLM */
@@ -101,11 +106,98 @@
             margin-right: 1.5rem;
             margin-bottom: 1rem;
         }
+        
+        /* تحسينات جديدة */
+        .floating-btn {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            z-index: 40;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        .progress-bar {
+            height: 6px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        .feature-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-left-color: #3b82f6;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .quote-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .quote-card::before {
+            content: """;
+            position: absolute;
+            top: -20px;
+            right: 10px;
+            font-size: 120px;
+            opacity: 0.2;
+            font-family: Georgia, serif;
+        }
+        .testimonial-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #3b82f6;
+        }
+        .timeline {
+            position: relative;
+            padding-right: 2rem;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #3b82f6;
+            border-radius: 2px;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            right: -2.3rem;
+            top: 0.5rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #3b82f6;
+            border: 3px solid white;
+            box-shadow: 0 0 0 3px #3b82f6;
+        }
     </style>
 </head>
 <body class="p-2 md:p-4">
 
     <script>
+        // تهيئة AOS للحركات
+        document.addEventListener('DOMContentLoaded', function() {
+            AOS.init({
+                duration: 800,
+                easing: 'ease-in-out',
+                once: true
+            });
+        });
+
         let chartDrawn = false; // متغير لتتبع حالة الرسم البياني
         const apiKey = ""; // مفتاح API لنموذج Gemini - يُترك فارغًا ليتم توفيره تلقائيًا في بيئة Canvas
 
@@ -132,9 +224,7 @@
                         <div class="flex justify-between items-center border-b pb-3 mb-4">
                             <h3 class="text-xl font-bold text-blue-700">${title}</h3>
                             <button onclick="closeLLMModal()" class="text-gray-500 hover:text-gray-800 transition">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                                <i class="fas fa-times"></i>
                             </button>
                         </div>
                         <p class="text-gray-600 mb-4">${content}</p>
@@ -160,14 +250,12 @@
 
         /**
          * @function closeLLMModal
-         * يغلق مربع حوار LLM. تم إصلاح المشكلة هنا عبر التحقق من وجود الحاوية أولاً،
-         * ثم إفراغ محتواها بدلاً من محاولة الوصول إلى عناصر قد تكون غير موجودة.
+         * يغلق مربع حوار LLM.
          */
         function closeLLMModal() {
             const modalContainer = document.getElementById('llm-modal-container');
             if (modalContainer) {
                 modalContainer.classList.add('hidden');
-                // الإصلاح الحاسم: إفراغ المحتوى الذي تم إنشاؤه ديناميكيًا لتجنب أخطاء Null عند الاستدعاء المبكر
                 modalContainer.innerHTML = '';
             }
         }
@@ -315,6 +403,55 @@
             }
         }
 
+        // 3. ميزة جديدة: اختبار العلاقات
+        async function analyzeRelationshipTest() {
+            const inputElement = document.getElementById('llm-input');
+            const outputElement = document.getElementById('llm-output');
+            const outputContainer = document.getElementById('llm-output-container');
+            const button = document.getElementById('llm-action-button');
+            const buttonTextSpan = document.getElementById('llm-button-text');
+            const spinner = document.getElementById('llm-spinner');
+            
+            const userTestInput = inputElement ? inputElement.value.trim() : '';
+
+            if (!userTestInput) {
+                if (outputElement) outputElement.innerHTML = '<p class="text-red-500">الرجاء إدخال تفاصيل علاقتك لتحليلها.</p>';
+                if (outputContainer) outputContainer.classList.remove('hidden');
+                return;
+            }
+
+            // إعداد واجهة المستخدم للتحميل
+            if (buttonTextSpan) buttonTextSpan.textContent = 'جاري التحليل...';
+            if (spinner) spinner.classList.remove('hidden');
+            if (button) button.disabled = true;
+            if (outputContainer) outputContainer.classList.add('hidden');
+            if (outputElement) outputElement.innerHTML = '';
+
+            try {
+                const systemPrompt = "أنت خبير في تحليل العلاقات الشخصية. مهمتك هي تحليل العلاقة المقدمة من المستخدم وتقييم نقاط القوة والضعف فيها، مع تقديم توصيات عملية لتحسينها. أجب باللغة العربية الفصحى.";
+                
+                const payload = {
+                    contents: [{ parts: [{ text: `تفاصيل العلاقة: ${userTestInput}` }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                };
+
+                const responseText = await fetchGeminiContent(payload);
+                
+                // تحويل المخرجات إلى HTML وعرضها
+                if (outputElement) outputElement.innerHTML = marked.parse(responseText);
+                if (outputContainer) outputContainer.classList.remove('hidden');
+
+            } catch (error) {
+                if (outputElement) outputElement.innerHTML = `<p class="text-red-500">حدث خطأ: ${error.message}</p>`;
+                if (outputContainer) outputContainer.classList.remove('hidden');
+            } finally {
+                // إعادة واجهة المستخدم إلى الحالة الأصلية
+                if (buttonTextSpan) buttonTextSpan.textContent = '✨ تحليل العلاقة';
+                if (spinner) spinner.classList.add('hidden');
+                if (button) button.disabled = false;
+            }
+        }
+
 
         // ==============================================
         //           دوال مساعدة (UI)
@@ -330,19 +467,23 @@
                 new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: ['النجاح المهني', 'الصحة النفسية', 'النمو المادي'],
+                        labels: ['النجاح المهني', 'الصحة النفسية', 'النمو المادي', 'التوازن العاطفي', 'التطور الشخصي'],
                         datasets: [{
                             label: 'نسبة الدعم والنمو (%)',
-                            data: [75, 40, 30],
+                            data: [75, 40, 30, 65, 55],
                             backgroundColor: [
                                 'rgba(59, 130, 246, 0.8)', 
                                 'rgba(236, 72, 153, 0.8)', 
-                                'rgba(79, 70, 229, 0.8)'  
+                                'rgba(79, 70, 229, 0.8)',
+                                'rgba(16, 185, 129, 0.8)',
+                                'rgba(245, 158, 11, 0.8)'
                             ],
                             borderColor: [
                                 'rgba(59, 130, 246, 1)',
                                 'rgba(236, 72, 153, 1)',
-                                'rgba(79, 70, 229, 1)'
+                                'rgba(79, 70, 229, 1)',
+                                'rgba(16, 185, 129, 1)',
+                                'rgba(245, 158, 11, 1)'
                             ],
                             borderWidth: 1
                         }]
@@ -400,7 +541,7 @@
                 }
             });
             
-            closeLLMModal(); // يجب إغلاق المودال أولاً - تم إصلاح هذه الدالة
+            closeLLMModal();
 
             const statsCard = document.getElementById('static-stats');
             if (statsCard) {
@@ -410,12 +551,16 @@
             const mainNav = document.getElementById('main-nav');
             if (pageId !== 'presentation-page') {
                 mainNav.classList.remove('hidden');
-                // نستخدم flex-col لتناسب الهواتف
                 mainNav.classList.add('flex', 'flex-col', 'sm:flex-row'); 
             } else {
                 mainNav.classList.add('hidden');
                 mainNav.classList.remove('flex', 'flex-col', 'sm:flex-row');
             }
+
+            // إعادة تهيئة AOS عند تغيير الصفحة
+            setTimeout(() => {
+                AOS.refresh();
+            }, 300);
         }
 
         // دالة إظهار وإخفاء الإحصائيات
@@ -435,6 +580,22 @@
                 if (!chartDrawn) {
                     setTimeout(drawChart, 100); 
                 }
+            }
+        }
+
+        // دالة جديدة: إظهار شريط التقدم
+        function updateProgress(percent) {
+            const progressBar = document.getElementById('progress-bar');
+            if (progressBar) {
+                progressBar.style.width = `${percent}%`;
+            }
+        }
+
+        // دالة جديدة: إظهار/إخفاء القائمة الجانبية
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('hidden');
             }
         }
 
@@ -467,32 +628,66 @@
         // إظهار صفحة التقديم عند تحميل الصفحة لأول مرة
         document.addEventListener('DOMContentLoaded', () => {
             showPage('presentation-page');
+            // تحديث شريط التقدم
+            setTimeout(() => updateProgress(100), 500);
         });
     </script>
 
     <!-- حاوية المودال (مخفية بشكل افتراضي) - هذا العنصر موجود دائمًا -->
     <div id="llm-modal-container" class="hidden"></div>
 
+    <!-- زر عائم للمساعدة -->
+    <button class="floating-btn bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition" onclick="showLLMModal('مساعدة سريعة', 'كيف يمكنني مساعدتك اليوم؟', 'analyzeRelationshipQuestion()', 'اكتب سؤالك هنا...', '✨ احصل على المساعدة')">
+        <i class="fas fa-question text-xl"></i>
+    </button>
+
+    <!-- شريط التقدم -->
+    <div class="fixed top-0 left-0 w-full h-1 bg-gray-200 z-50">
+        <div id="progress-bar" class="progress-bar"></div>
+    </div>
 
     <!-- ============================================== -->
     <!--          واجهة التقديم (Landing Page)          -->
     <!-- ============================================== -->
-    <div id="presentation-page" class="page-content active flex items-center justify-center min-h-screen bg-blue-50 p-4">
-        <div class="max-w-xl mx-auto p-8 text-center bg-white rounded-3xl container-shadow">
-            <h1 class="text-5xl font-extrabold text-blue-800 mb-4 animate-pulse">رحلة في عالم الشباب</h1>
-            <p class="text-xl text-gray-700 mb-4 leading-relaxed">
-                اكتشف كيف تتشابك خيوط **الحب والصداقة** لتشكل الأساس العاطفي والاجتماعي في أهم مراحل بناء الهوية. تحليل معمق لأهمية الصداقة كقاعدة، وظهور الحب كتجربة مكثفة.
-            </p>
-            <!-- إضافة أسماء المقدمين هنا -->
-            <p class="text-sm text-gray-500 mb-8">
-                بتقديم من: عمر الميعاوي | عصام مي | محمد عزري | إسلام | **مريم عشوي** | **معهد نهج العطارين**
-            </p>
-            <!-- نهاية إضافة أسماء المقدمين -->
+    <div id="presentation-page" class="page-content active flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <div class="max-w-4xl mx-auto p-8 text-center bg-white rounded-3xl container-shadow" data-aos="zoom-in">
+            <div class="mb-8">
+                <i class="fas fa-heart text-6xl text-pink-500 mb-4"></i>
+                <h1 class="text-5xl font-extrabold text-blue-800 mb-4 animate-pulse">رحلة في عالم الشباب</h1>
+                <p class="text-xl text-gray-700 mb-6 leading-relaxed">
+                    اكتشف كيف تتشابك خيوط <span class="font-bold text-blue-800">الحب والصداقة</span> لتشكل الأساس العاطفي والاجتماعي في أهم مراحل بناء الهوية. تحليل معمق لأهمية الصداقة كقاعدة، وظهور الحب كتجربة مكثفة.
+                </p>
+                <!-- إضافة أسماء المقدمين هنا -->
+                <p class="text-lg text-gray-600 mb-8 bg-blue-50 p-4 rounded-xl">
+                    بتقديم من: <span class="font-semibold">عمر الميعاوي | عصام مي | محمد عزري | إسلام | مريم عشوي | معهد نهج العطارين</span>
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div class="feature-card p-6 bg-white rounded-xl border border-blue-200" data-aos="fade-up" data-aos-delay="100">
+                    <i class="fas fa-users text-4xl text-blue-500 mb-4"></i>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">تحليل العلاقات</h3>
+                    <p class="text-gray-600">اكتشف ديناميكيات الصداقة والحب وتأثيرها على حياتك</p>
+                </div>
+                <div class="feature-card p-6 bg-white rounded-xl border border-green-200" data-aos="fade-up" data-aos-delay="200">
+                    <i class="fas fa-chart-line text-4xl text-green-500 mb-4"></i>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">مؤشرات النجاح</h3>
+                    <p class="text-gray-600">تعرف على كيف تدعم العلاقات مسارك المهني والشخصي</p>
+                </div>
+                <div class="feature-card p-6 bg-white rounded-xl border border-purple-200" data-aos="fade-up" data-aos-delay="300">
+                    <i class="fas fa-robot text-4xl text-purple-500 mb-4"></i>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">مساعد ذكي</h3>
+                    <p class="text-gray-600">استفد من الذكاء الاصطناعي لتحليل تحدياتك ووضع أهدافك</p>
+                </div>
+            </div>
+            
             <button 
                 onclick="showPage('analysis-page')"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg flex items-center justify-center mx-auto"
+                data-aos="fade-up" data-aos-delay="400"
             >
                 ابدأ التحليل الآن
+                <i class="fas fa-arrow-left mr-2"></i>
             </button>
         </div>
     </div>
@@ -500,31 +695,41 @@
     <!-- ============================================== -->
     <!--          شريط التنقل (لكل الصفحات الرئيسية)        -->
     <!-- ============================================== -->
-    <!-- تم التحديث: استخدام flex-col على الهاتف (افتراضي) و sm:flex-row للأجهزة الأكبر، مع مسافات (space-y/space-x) ملائمة -->
     <div id="main-nav" class="hidden flex-col sm:flex-row justify-center bg-white p-4 shadow-md sticky top-0 z-10 space-y-2 sm:space-y-0 sm:space-x-4">
-        <button onclick="showPage('analysis-page')" class="nav-btn py-2 px-4 text-gray-600 rounded-full hover:bg-gray-100 transition w-full sm:w-auto">تحليل الحب والصداقة</button>
-        <button onclick="showPage('success-page')" class="nav-btn py-2 px-4 text-gray-600 rounded-full hover:bg-gray-100 transition w-full sm:w-auto">العلاقات ودفع النجاح</button>
+        <button onclick="showPage('analysis-page')" class="nav-btn py-2 px-4 text-gray-600 rounded-full hover:bg-gray-100 transition w-full sm:w-auto flex items-center justify-center">
+            <i class="fas fa-heart mr-2 text-red-500"></i>
+            تحليل الحب والصداقة
+        </button>
+        <button onclick="showPage('success-page')" class="nav-btn py-2 px-4 text-gray-600 rounded-full hover:bg-gray-100 transition w-full sm:w-auto flex items-center justify-center">
+            <i class="fas fa-trophy mr-2 text-yellow-500"></i>
+            العلاقات ودفع النجاح
+        </button>
+        <button onclick="showPage('resources-page')" class="nav-btn py-2 px-4 text-gray-600 rounded-full hover:bg-gray-100 transition w-full sm:w-auto flex items-center justify-center">
+            <i class="fas fa-book mr-2 text-green-500"></i>
+            موارد ونصائح
+        </button>
     </div>
 
     <!-- ============================================== -->
     <!--          واجهة المحتوى الأساسي (Analysis Page)      -->
     <!-- ============================================== -->
     <div id="analysis-page" class="page-content pt-4 pb-8">
-        <!-- تم الحفاظ على max-w-4xl mx-auto لضمان عدم تمدد المحتوى بشكل مفرط على الشاشات الكبيرة -->
-        <div class="max-w-4xl mx-auto bg-white rounded-3xl container-shadow overflow-hidden">
+        <div class="max-w-6xl mx-auto bg-white rounded-3xl container-shadow overflow-hidden">
             
             <!-- القسم الرئيسي والعنوان -->
-            <header class="bg-blue-600 text-white p-6 md:p-10 rounded-t-3xl text-center">
-                <h1 class="text-3xl md:text-4xl font-extrabold mb-2">العلاقة المتشابكة: الحب والصداقة في الشباب</h1>
-                <p class="text-lg opacity-90">تحليل محوري للتطور العاطفي والاجتماعي في هذه المرحلة العمرية</p>
+            <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 md:p-10 rounded-t-3xl text-center">
+                <h1 class="text-3xl md:text-4xl font-extrabold mb-2" data-aos="fade-down">العلاقة المتشابكة: الحب والصداقة في الشباب</h1>
+                <p class="text-lg opacity-90" data-aos="fade-down" data-aos-delay="100">تحليل محوري للتطور العاطفي والاجتماعي في هذه المرحلة العمرية</p>
             </header>
 
             <!-- زر ميزة Gemini (تحليل العلاقات) -->
-            <div class="p-6 md:p-10 bg-blue-100 text-center">
+            <div class="p-6 md:p-10 bg-gradient-to-r from-blue-100 to-purple-100 text-center">
                 <button 
                     onclick="showLLMModal('✨ تحليل سؤال عن العلاقات', 'اكتب سؤالك أو سيناريو حول تحديات العلاقة (صداقة أو حب) للحصول على تحليل ونصيحة متوازنة من خبير العلاقات لدينا.', 'analyzeRelationshipQuestion()', 'مثال: كيف أوازن بين قضاء الوقت مع شريكي وأصدقائي المقربين دون أن يشعر أحدهم بالإهمال؟', '✨ تحليل السؤال')"
                     class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center mx-auto"
+                    data-aos="zoom-in"
                 >
+                    <i class="fas fa-robot mr-2"></i>
                     ✨ تحليل سؤال عن العلاقات (Gemini)
                 </button>
             </div>
@@ -532,15 +737,18 @@
             <main class="p-6 md:p-10 space-y-12">
 
                 <!-- المقدمة -->
-                <section>
+                <section data-aos="fade-up">
                     <p class="text-lg leading-relaxed text-gray-700">
                         العلاقة بين <span class="font-bold text-blue-800">الشباب</span> في مجال الحب والصداقة هي علاقة متداخلة ومحورية في هذه المرحلة العمرية، حيث تعتبر كل منهما أساساً لتطورهم العاطفي والاجتماعي.
                     </p>
                 </section>
 
                 <!-- 1. أهمية الصداقة (الصداقة كقاعدة) -->
-                <section class="p-6 bg-green-50 rounded-xl border border-green-200">
-                    <h2 class="text-2xl font-bold text-green-700 mb-4">1. أهمية الصداقة (الصداقة كقاعدة)</h2>
+                <section class="p-6 bg-green-50 rounded-xl border border-green-200" data-aos="fade-right">
+                    <h2 class="text-2xl font-bold text-green-700 mb-4 flex items-center">
+                        <i class="fas fa-users mr-2"></i>
+                        1. أهمية الصداقة (الصداقة كقاعدة)
+                    </h2>
                     <p class="text-gray-600 mb-5">تُعد الصداقة في مرحلة الشباب بمثابة الركيزة الأساسية التي يتعلم فيها الشاب كيفية بناء العلاقات الحميمة خارج نطاق الأسرة.</p>
                     
                     <div class="space-y-4">
@@ -560,8 +768,11 @@
                 </section>
 
                 <!-- 2. ظهور الحب (العلاقات الرومانسية) -->
-                <section class="p-6 bg-red-50 rounded-xl border border-red-200">
-                    <h2 class="text-2xl font-bold text-red-700 mb-4">2. ظهور الحب (العلاقات الرومانسية)</h2>
+                <section class="p-6 bg-red-50 rounded-xl border border-red-200" data-aos="fade-left">
+                    <h2 class="text-2xl font-bold text-red-700 mb-4 flex items-center">
+                        <i class="fas fa-heart mr-2"></i>
+                        2. ظهور الحب (العلاقات الرومانسية)
+                    </h2>
                     <p class="text-gray-600 mb-5">العلاقات العاطفية (الحب الرومانسي) تبدأ بالظهور في مرحلة الشباب، وتأتي مع تحديات ومشاعر جديدة:</p>
                     
                     <div class="space-y-4">
@@ -581,10 +792,12 @@
                 </section>
 
                 <!-- 3. العلاقة المتشابكة بينهما (الجدول) -->
-                <section>
-                    <h2 class="text-2xl font-bold text-blue-800 mb-5 border-b-2 pb-2 border-blue-200">3. العلاقة المتشابكة بينهما</h2>
+                <section data-aos="fade-up">
+                    <h2 class="text-2xl font-bold text-blue-800 mb-5 border-b-2 pb-2 border-blue-200 flex items-center">
+                        <i class="fas fa-link mr-2"></i>
+                        3. العلاقة المتشابكة بينهما
+                    </h2>
 
-                    <!-- تم الحفاظ على overflow-x-auto لضمان التمرير الأفقي في حال ضاق المحتوى جداً -->
                     <div class="overflow-x-auto rounded-lg border border-gray-200">
                         <table class="w-full text-sm comparison-table">
                             <thead class="bg-gray-100">
@@ -614,6 +827,11 @@
                         </table>
                     </div>
                 </section>
+
+                <!-- اقتباس ملهم -->
+                <div class="quote-card" data-aos="zoom-in">
+                    <p class="text-xl italic text-center">"الصداقة هي الأرض الخصبة التي تنمو فيها بذور الحب، والحب هو الشجرة التي تزهر في تربة الصداقة."</p>
+                </div>
             </main>
 
             <!-- التذييل -->
@@ -628,19 +846,21 @@
     <!--          واجهة العلاقات ودفع النجاح (Success Page)      -->
     <!-- ============================================== -->
     <div id="success-page" class="page-content pt-4 pb-8">
-        <div class="max-w-4xl mx-auto bg-white rounded-3xl container-shadow overflow-hidden">
+        <div class="max-w-6xl mx-auto bg-white rounded-3xl container-shadow overflow-hidden">
             
-            <header class="bg-indigo-600 text-white p-6 md:p-10 rounded-t-3xl text-center">
-                <h1 class="text-3xl md:text-4xl font-extrabold mb-2">العلاقات كمحرك للنجاح</h1>
-                <p class="text-lg opacity-90">كيف تدعم الصداقة والحب مسيرة الشاب نحو الإنجاز الشخصي والمهني.</p>
+            <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 md:p-10 rounded-t-3xl text-center">
+                <h1 class="text-3xl md:text-4xl font-extrabold mb-2" data-aos="fade-down">العلاقات كمحرك للنجاح</h1>
+                <p class="text-lg opacity-90" data-aos="fade-down" data-aos-delay="100">كيف تدعم الصداقة والحب مسيرة الشاب نحو الإنجاز الشخصي والمهني.</p>
             </header>
 
             <!-- زر ميزة Gemini (صياغة هدف شخصي/مهني) -->
-            <div class="p-6 md:p-10 bg-indigo-100 text-center">
+            <div class="p-6 md:p-10 bg-gradient-to-r from-indigo-100 to-purple-100 text-center">
                 <button 
                     onclick="showLLMModal('✨ صياغة هدف شخصي/مهني', 'اكتب فكرة هدفك الحالي (مثال: أريد أن أكون مستقلاً مادياً، أو أريد أن أجد وظيفة أحبها) وسنساعدك في تحويله إلى هدف محدد وفعّال (SMART Goal).', 'draftPersonalGoal()', 'مثال: أريد أن أطور مهاراتي في البرمجة وأجد وظيفة مناسبة بعد عام من الآن.', '✨ صياغة الهدف')"
                     class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center mx-auto"
+                    data-aos="zoom-in"
                 >
+                    <i class="fas fa-bullseye mr-2"></i>
                     ✨ صياغة هدف شخصي/مهني (Gemini)
                 </button>
             </div>
@@ -648,9 +868,10 @@
             <main class="p-6 md:p-10 space-y-12">
                 
                 <!-- نجاح الصداقة -->
-                <section class="p-6 bg-yellow-50 rounded-xl border border-yellow-200">
+                <section class="p-6 bg-yellow-50 rounded-xl border border-yellow-200" data-aos="fade-right">
                     <h2 class="text-2xl font-bold text-yellow-700 mb-4 flex items-center">
-                        <span class="text-3xl ml-3">&#9733;</span> الصداقة وزيادة النجاح المهني
+                        <i class="fas fa-star mr-2"></i>
+                        الصداقة وزيادة النجاح المهني
                     </h2>
                     
                     <div class="space-y-4">
@@ -670,9 +891,10 @@
                 </section>
 
                 <!-- نجاح الحب -->
-                <section class="p-6 bg-pink-50 rounded-xl border border-pink-200">
+                <section class="p-6 bg-pink-50 rounded-xl border border-pink-200" data-aos="fade-left">
                     <h2 class="text-2xl font-bold text-pink-700 mb-4 flex items-center">
-                        <span class="text-3xl ml-3">&#10084;</span> الحب وزيادة النجاح الشخصي
+                        <i class="fas fa-heart mr-2"></i>
+                        الحب وزيادة النجاح الشخصي
                     </h2>
                     
                     <div class="space-y-4">
@@ -691,13 +913,37 @@
                     </div>
                 </section>
                 
+                <!-- خط زمني لتطور العلاقات -->
+                <section data-aos="fade-up">
+                    <h2 class="text-2xl font-bold text-purple-700 mb-6 text-center">خط زمني لتطور العلاقات في مرحلة الشباب</h2>
+                    <div class="timeline">
+                        <div class="timeline-item" data-aos="fade-left">
+                            <h3 class="text-xl font-bold text-gray-800">المراهقة المبكرة (13-16)</h3>
+                            <p class="text-gray-600">تبدأ الصداقات العميقة في التشكل، مع التركيز على الأصدقاء من نفس الجنس</p>
+                        </div>
+                        <div class="timeline-item" data-aos="fade-left" data-aos-delay="100">
+                            <h3 class="text-xl font-bold text-gray-800">المراهقة المتأخرة (17-19)</h3>
+                            <p class="text-gray-600">ظهور الاهتمام بالعلاقات العاطفية الأولى، مع محاولة الموازنة بين الصداقات والعلاقات الجديدة</p>
+                        </div>
+                        <div class="timeline-item" data-aos="fade-left" data-aos-delay="200">
+                            <h3 class="text-xl font-bold text-gray-800">مرحلة الشباب (20-25)</h3>
+                            <p class="text-gray-600">تتطور العلاقات العاطفية لتصبح أكثر جدية، مع استقرار شبكة الصداقات وتركيزها على الجودة بدلاً من الكمية</p>
+                        </div>
+                        <div class="timeline-item" data-aos="fade-left" data-aos-delay="300">
+                            <h3 class="text-xl font-bold text-gray-800">الشباب المتقدم (26-30)</h3>
+                            <p class="text-gray-600">التركيز على العلاقات المستقرة طويلة الأمد، مع الحفاظ على الصداقات الأساسية التي تدعم النمو الشخصي والمهني</p>
+                        </div>
+                    </div>
+                </section>
+                
                 <!-- زر الإحصائيات -->
-                <div class="text-center pt-8">
+                <div class="text-center pt-8" data-aos="zoom-in">
                     <button 
                         id="stats-button"
                         onclick="toggleStats()"
-                        class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-xl"
+                        class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-xl flex items-center justify-center mx-auto"
                     >
+                        <i class="fas fa-chart-bar mr-2"></i>
                         شاهد إحصائيات النجاح
                     </button>
                 </div>
@@ -741,5 +987,143 @@
             </footer>
         </div>
     </div>
+
+    <!-- ============================================== -->
+    <!--          صفحة الموارد والنصائح (الجديدة)         -->
+    <!-- ============================================== -->
+    <div id="resources-page" class="page-content pt-4 pb-8">
+        <div class="max-w-6xl mx-auto bg-white rounded-3xl container-shadow overflow-hidden">
+            
+            <header class="bg-gradient-to-r from-green-600 to-teal-600 text-white p-6 md:p-10 rounded-t-3xl text-center">
+                <h1 class="text-3xl md:text-4xl font-extrabold mb-2" data-aos="fade-down">موارد ونصائح عملية</h1>
+                <p class="text-lg opacity-90" data-aos="fade-down" data-aos-delay="100">أدوات واستراتيجيات لبناء علاقات صحية وناجحة</p>
+            </header>
+
+            <!-- زر ميزة Gemini (اختبار العلاقات) -->
+            <div class="p-6 md:p-10 bg-gradient-to-r from-green-100 to-teal-100 text-center">
+                <button 
+                    onclick="showLLMModal('✨ اختبار وتحليل العلاقة', 'صف علاقتك الحالية (صداقة أو حب) وسنقوم بتحليل نقاط القوة والضعف فيها وتقديم توصيات لتحسينها.', 'analyzeRelationshipTest()', 'مثال: لدي صديق مقرب ولكننا نواجه صعوبات في التواصل مؤخراً بسبب اختلاف أولوياتنا.', '✨ تحليل العلاقة')"
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center justify-center mx-auto"
+                    data-aos="zoom-in"
+                >
+                    <i class="fas fa-clipboard-check mr-2"></i>
+                    ✨ اختبار وتحليل العلاقة (Gemini)
+                </button>
+            </div>
+
+            <main class="p-6 md:p-10 space-y-12">
+                
+                <!-- نصائح لتحسين العلاقات -->
+                <section data-aos="fade-up">
+                    <h2 class="text-2xl font-bold text-green-700 mb-6 text-center">نصائح عملية لتحسين العلاقات</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl border border-green-200 shadow-sm">
+                            <h3 class="text-xl font-bold text-gray-800 mb-3 flex items-center">
+                                <i class="fas fa-comments text-green-500 mr-2"></i>
+                                التواصل الفعال
+                            </h3>
+                            <ul class="text-gray-600 space-y-2">
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-green-500 mt-1 ml-2"></i>
+                                    <span>استمع بفعالية دون مقاطعة</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-green-500 mt-1 ml-2"></i>
+                                    <span>عبّر عن مشاعرك بوضوح وبطريقة بناءة</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-green-500 mt-1 ml-2"></i>
+                                    <span>استخدم لغة الجسد الإيجابية</span>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-xl border border-blue-200 shadow-sm">
+                            <h3 class="text-xl font-bold text-gray-800 mb-3 flex items-center">
+                                <i class="fas fa-balance-scale text-blue-500 mr-2"></i>
+                                الموازنة بين العلاقات
+                            </h3>
+                            <ul class="text-gray-600 space-y-2">
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-blue-500 mt-1 ml-2"></i>
+                                    <span>خصص وقتاً منتظماً للأصدقاء والشريك</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-blue-500 mt-1 ml-2"></i>
+                                    <span>لا تهمل العلاقات القديمة لصالح الجديدة</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-check text-blue-500 mt-1 ml-2"></i>
+                                    <span>تعلم أن تقول "لا" عند الحاجة</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- قصص نجاح -->
+                <section data-aos="fade-up" data-aos-delay="100">
+                    <h2 class="text-2xl font-bold text-purple-700 mb-6 text-center">قصص نجاح مستوحاة من العلاقات</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="testimonial-card" data-aos="flip-left">
+                            <div class="flex items-center mb-4">
+                                <div class="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold">س</div>
+                                <div class="mr-3">
+                                    <h4 class="font-bold text-gray-800">سارة</h4>
+                                    <p class="text-sm text-gray-600">مهندسة برمجيات</p>
+                                </div>
+                            </div>
+                            <p class="text-gray-700 italic">"صديقتي المقربة شجعتني على تقديم طلب للوظيفة التي كنت أخشى التقدم لها. الآن أعمل في شركة أحلم بها منذ سنوات!"</p>
+                        </div>
+                        
+                        <div class="testimonial-card" data-aos="flip-right">
+                            <div class="flex items-center mb-4">
+                                <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">م</div>
+                                <div class="mr-3">
+                                    <h4 class="font-bold text-gray-800">محمد</h4>
+                                    <p class="text-sm text-gray-600">طالب طب</p>
+                                </div>
+                            </div>
+                            <p class="text-gray-700 italic">"شريكتي ساعدتني على تخطي أصعب فترات الدراسة بدعمها النفسي المستمر. بدونها لما استطعت الاستمرار."</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- كتب ومراجع مقترحة -->
+                <section data-aos="fade-up" data-aos-delay="200">
+                    <h2 class="text-2xl font-bold text-indigo-700 mb-6 text-center">مراجع مقترحة للقراءة</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-white p-5 rounded-xl border border-indigo-200 text-center">
+                            <i class="fas fa-book text-4xl text-indigo-500 mb-3"></i>
+                            <h3 class="font-bold text-gray-800 mb-2">لغات الحب الخمس</h3>
+                            <p class="text-sm text-gray-600">غاري تشابمان</p>
+                        </div>
+                        
+                        <div class="bg-white p-5 rounded-xl border border-indigo-200 text-center">
+                            <i class="fas fa-book text-4xl text-indigo-500 mb-3"></i>
+                            <h3 class="font-bold text-gray-800 mb-2">كيف تكسب الأصدقاء</h3>
+                            <p class="text-sm text-gray-600">ديل كارنيجي</p>
+                        </div>
+                        
+                        <div class="bg-white p-5 rounded-xl border border-indigo-200 text-center">
+                            <i class="fas fa-book text-4xl text-indigo-500 mb-3"></i>
+                            <h3 class="font-bold text-gray-800 mb-2">الذكاء العاطفي</h3>
+                            <p class="text-sm text-gray-600">دانيال جولمان</p>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+
+            <!-- التذييل -->
+            <footer class="p-6 md:p-8 bg-gray-100 text-center text-gray-600 rounded-b-3xl">
+                <p class="text-sm">الاستثمار في العلاقات هو استثمار في سعادتك ونجاحك.</p>
+            </footer>
+        </div>
+    </div>
+
 </body>
 </html>
